@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>⚔️ Dungeon Crawler 3D</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=IM+Fell+English&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;overflow:hidden;font-family:'Cinzel',serif;color:#d4b896;}
+#c{display:block;width:100vw;height:100vh;}
+
+/* HUD */
+#hud{
+  position:fixed;top:0;left:0;right:0;
+  display:flex;gap:12px;align-items:center;justify-content:center;
+  padding:10px 20px;
+  background:linear-gradient(180deg,rgba(0,0,0,0.85) 0%,transparent 100%);
+  z-index:100;pointer-events:none;
+}
+.hb{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.hl{color:#6a4020;font-size:0.32rem;letter-spacing:2px;text-transform:uppercase;}
+.bw{width:90px;height:7px;background:#120810;border:1px solid #3a2210;border-radius:2px;overflow:hidden;}
+.bf{height:100%;border-radius:2px;transition:width 0.3s;}
+#hpf{background:linear-gradient(90deg,#6a0000,#e74c3c);box-shadow:0 0 6px #e74c3c66;}
+#xpf{background:linear-gradient(90deg,#0a2860,#3498db);box-shadow:0 0 6px #3498db66;}
+.sv{font-size:0.5rem;font-weight:700;}
+.hdiv{width:1px;height:36px;background:rgba(201,168,76,0.15);margin:0 4px;}
+
+/* Log */
+#log{
+  position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+  width:500px;text-align:center;
+  font-size:0.42rem;color:#9a7850;
+  font-family:'IM Fell English',serif;line-height:1.9;
+  pointer-events:none;z-index:100;
+  text-shadow:0 2px 8px rgba(0,0,0,0.9);
+}
+
+/* Overlay */
+#ov{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center,rgba(10,4,20,0.97) 0%,rgba(0,0,0,0.99) 100%);
+  z-index:200;
+}
+#ov h2{
+  font-size:2.8rem;font-weight:900;color:#c9a84c;
+  text-shadow:0 0 40px #c9a84c99,0 0 80px #c9a84c44;
+  letter-spacing:8px;margin-bottom:16px;
+}
+#ov .sub{font-size:0.45rem;color:#6a4820;letter-spacing:2px;margin-bottom:6px;line-height:2.4;text-align:center;}
+.obtn{
+  margin-top:20px;padding:14px 40px;
+  background:linear-gradient(180deg,#3e1e00,#180e00);
+  border:1px solid #c9a84c;color:#c9a84c;
+  font-family:'Cinzel',serif;font-size:0.6rem;cursor:pointer;
+  letter-spacing:4px;text-shadow:0 0 10px #c9a84c99;
+  box-shadow:0 0 20px #c9a84c22,inset 0 1px 0 rgba(255,220,120,0.1);
+  transition:all 0.2s;border-radius:3px;
+}
+.obtn:hover{
+  background:linear-gradient(180deg,#5a2e00,#2a1400);
+  box-shadow:0 0 40px #c9a84c55,inset 0 1px 0 rgba(255,220,120,0.2);
+  transform:translateY(-1px);
+}
+
+/* Floating damage numbers */
+#floats{position:fixed;inset:0;pointer-events:none;z-index:150;overflow:hidden;}
+.ft{
+  position:absolute;font-family:'Cinzel',serif;font-weight:700;
+  font-size:1.1rem;text-shadow:0 2px 6px rgba(0,0,0,0.8);
+  animation:floatUp 1s ease-out forwards;
+  transform:translateX(-50%);
+}
+@keyframes floatUp{
+  0%{opacity:1;transform:translateX(-50%) translateY(0);}
+  100%{opacity:0;transform:translateX(-50%) translateY(-60px);}
+}
+
+/* Mobile controls */
+#dpad{
+  position:fixed;bottom:30px;left:30px;z-index:100;
+  display:none;
+}
+@media(max-width:700px){#dpad{display:grid;}}
+#dpad{grid-template-columns:44px 44px 44px;grid-template-rows:44px 44px 44px;gap:4px;}
+.dpbtn{
+  background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);
+  border-radius:6px;color:#c9a84c;font-size:1.2rem;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;user-select:none;-webkit-user-select:none;
+  active-background:rgba(201,168,76,0.3);
+}
+.mpip{width:10px;height:10px;border-radius:50%;border:1px solid #6d28d9;transition:background 0.15s;}
+.mpip.full{background:radial-gradient(circle,#c4b5fd,#7c3aed);box-shadow:0 0 5px #7c3aed99;}
+.mpip.empty{background:#1a0a2e;}
+/* Minimap */
+#minimap{
+  position:fixed;bottom:16px;right:16px;
+  width:140px;height:140px;
+  background:rgba(0,0,0,0.75);
+  border:1px solid rgba(201,168,76,0.4);
+  border-radius:4px;z-index:110;
+  overflow:hidden;
+}
+#minimap canvas{display:block;}
+/* Crosshair */
+#xhair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:120;}
+#xhair::before,#xhair::after{content:'';position:absolute;background:rgba(255,255,255,0.7);border-radius:1px;}
+#xhair::before{width:14px;height:2px;top:-1px;left:-7px;}
+#xhair::after{width:2px;height:14px;top:-7px;left:-1px;}
+#lock-hint{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);color:rgba(201,168,76,0.6);font-size:0.38rem;letter-spacing:2px;pointer-events:none;z-index:120;transition:opacity 0.5s;}
+
+/* ── Shop ── */
+#shop-panel{display:none;width:100%;max-width:820px;padding:0 16px;overflow-y:auto;max-height:92vh;}
+#shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;}
+.scard{
+  display:grid;
+  grid-template-columns:28px 1fr auto;
+  grid-template-rows:auto auto;
+  column-gap:8px;row-gap:1px;
+  align-items:center;
+  background:linear-gradient(135deg,#16102a,#0c0818);
+  border:1px solid #2e2050;border-radius:5px;
+  padding:7px 10px;cursor:pointer;
+  transition:border-color 0.15s,box-shadow 0.15s;
+  position:relative;
+}
+.scard:hover:not(.scard-maxed):not(.scard-cantafford){
+  border-color:#7c3aed;box-shadow:0 0 10px #7c3aed44;
+}
+.scard-maxed{opacity:0.4;cursor:default;border-color:#1e1630;}
+.scard-cantafford{opacity:0.55;cursor:default;}
+.sicon{font-size:1.1rem;grid-row:1/3;display:flex;align-items:center;justify-content:center;}
+.sname{font-size:0.28rem;font-weight:700;color:#d4b896;letter-spacing:1.5px;white-space:nowrap;}
+.sdesc{font-size:0.42rem;color:#c9a84c;letter-spacing:0.5px;line-height:1.4;}
+.sprice{font-size:0.36rem;color:#c9a84c;font-weight:700;grid-row:1/3;text-align:right;white-space:nowrap;}
+.srank{font-size:0.26rem;color:#4a3060;position:absolute;top:4px;right:8px;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hb">
+    <div class="hl">❤ HP</div>
+    <div class="bw"><div class="bf" id="hpf" style="width:100%"></div></div>
+    <div class="sv" id="hpv" style="color:#e74c3c">30/30</div>
+  </div>
+  <div class="hdiv"></div>
+  <div class="hb">
+    <div class="hl">⭐ XP</div>
+    <div class="bw"><div class="bf" id="xpf" style="width:0%"></div></div>
+    <div class="sv" id="xpv" style="color:#3498db">0/20</div>
+  </div>
+  <div class="hdiv"></div>
+  <div class="hb"><div class="hl">⚔ ATK</div><div class="sv" id="atkv" style="color:#e67e22">3</div></div>
+  <div class="hdiv"></div>
+  <div class="hb"><div class="hl">💰 GOLD</div><div class="sv" id="goldv" style="color:#c9a84c">0</div></div>
+  <div class="hdiv"></div>
+  <div class="hb"><div class="hl">🗺 FLOOR</div><div class="sv" id="flrv">1</div></div>
+  <div class="hdiv"></div>
+  <div class="hb"><div class="hl">⚡ LVL</div><div class="sv" id="lvlv" style="color:#ffe08a">1</div></div>
+  <div class="hdiv"></div>
+  <div class="hb"><div class="hl">💨 DASH</div><div class="sv" id="dashv" style="color:#ff8800">READY</div></div>
+  <div class="hdiv"></div>
+  <div class="hb">
+    <div class="hl">✨ MANA</div>
+    <div id="manapips" style="display:flex;gap:3px;align-items:center;min-height:14px;"></div>
+    <div class="sv" id="manav" style="color:#a78bfa">0/0</div>
+  </div>
+</div>
+
+<!-- Log -->
+<div id="log">The dungeon awaits, adventurer...</div>
+
+<!-- Floating numbers container -->
+<div id="floats"></div>
+<!-- Minimap -->
+<div id="minimap"><canvas id="mmcanvas" width="140" height="140"></canvas></div>
+<!-- Crosshair -->
+<div id="xhair"></div>
+<div id="lock-hint">DRAG TO LOOK</div>
+
+<!-- D-pad for mobile -->
+<div id="dpad">
+  <div></div>
+  <div class="dpbtn" id="du">▲</div>
+  <div></div>
+  <div class="dpbtn" id="dl">◀</div>
+  <div></div>
+  <div class="dpbtn" id="dr">▶</div>
+  <div></div>
+  <div class="dpbtn" id="dd">▼</div>
+  <div></div>
+</div>
+
+<!-- Overlay -->
+<div id="ov">
+
+  <!-- MAIN MENU -->
+  <div id="menu-panel">
+    <h2>⚔ DUNGEON</h2>
+    <div class="sub">
+      <div>🗺 3D dungeon · explore procedural floors</div>
+      <div>👹 WASD/Arrows move · Q/E turn · SPACE shoot · F dash</div>
+      <div>🔮 Start with 3 mana · gain level+2 per level-up</div>
+      <div>🏹 Ranged enemies shoot · step close to fight them</div>
+      <div style="color:#ffe08a88;font-size:0.36rem;margin-top:4px;">Gold earned carries over between runs to spend in the Shop</div>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:12px;">
+      <button class="obtn" onclick="startGame()">▶ ENTER DUNGEON</button>
+      <button class="obtn" id="shop-btn" style="background:linear-gradient(180deg,#1a0e2e,#0a0618);border-color:#a78bfa;color:#a78bfa;text-shadow:0 0 10px #a78bfa99;" onclick="openShop()">🛒 SHOP</button>
+    </div>
+    <div id="bank-display" style="margin-top:14px;font-size:0.44rem;color:#c9a84c;letter-spacing:2px;">💰 Bank: 0 gold</div>
+  </div>
+
+  <!-- SHOP -->
+  <div id="shop-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <h2 style="font-size:1.4rem;letter-spacing:4px;">🛒 SHOP</h2>
+      <div id="shop-bank" style="font-size:0.44rem;color:#c9a84c;letter-spacing:2px;">💰 0 gold</div>
+    </div>
+    <div id="shop-grid"></div>
+    <button class="obtn" style="margin-top:12px;font-size:0.42rem;padding:8px 24px;" onclick="closeShop()">← BACK</button>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════════════════════
+const COLS=18,ROWS=18,TILE=2.4;
+const T={WALL:0,FLOOR:1,STAIR:2,CHEST:3,POTION:4};
+const MDEFS={
+  goblin: {name:'Goblin', hp:7, atk:2,xp:5, gold:[1,4],  color:0x27ae60,bodyColor:0x1a8c47,h:0.55,ranged:false},
+  orc:    {name:'Orc',    hp:15,atk:4,xp:12,gold:[3,8],  color:0xe67e22,bodyColor:0xb85c0a,h:0.75,ranged:false},
+  troll:  {name:'Troll',  hp:26,atk:7,xp:22,gold:[6,14], color:0x8e44ad,bodyColor:0x6c2d8f,h:0.95,ranged:false},
+  dragon: {name:'Dragon', hp:44,atk:11,xp:55,gold:[18,36],color:0xc0392b,bodyColor:0x922018,h:1.1,ranged:false},
+  // ── Ranged enemies ──
+  archer: {name:'Archer', hp:8, atk:3,xp:8, gold:[2,5],  color:0x16a085,bodyColor:0x0e6b5a,h:0.60,ranged:true,shotColor:0x1affd0,shotCooldown:2.2},
+  hexer:  {name:'Hexer',  hp:18,atk:6,xp:18,gold:[4,9],  color:0x9b59b6,bodyColor:0x6c2d8f,h:0.70,ranged:true,shotColor:0xdd44ff,shotCooldown:2.8},
+  lich:   {name:'Lich',   hp:32,atk:9,xp:35,gold:[8,18], color:0xe74c3c,bodyColor:0x8e1010,h:0.80,ranged:true,shotColor:0xff2200,shotCooldown:3.2},
+  // ── Late-game enemies (floors 8+) ──
+  golem:    {name:'Golem',    hp:70, atk:9, xp:70, gold:[20,40],color:0x607d8b,bodyColor:0x37474f,h:1.25,ranged:false},
+  wraith:   {name:'Wraith',   hp:45, atk:7, xp:55, gold:[14,28],color:0x7986cb,bodyColor:0x3949ab,h:0.90,ranged:true, shotColor:0x536dfe,shotCooldown:2.0},
+  vampire:  {name:'Vampire',  hp:55, atk:10,xp:65, gold:[16,32],color:0x880e4f,bodyColor:0x560027,h:1.00,ranged:false},
+  demonlord:{name:'Demon Lord',hp:110,atk:13,xp:140,gold:[40,80],color:0xff1744,bodyColor:0xb71c1c,h:1.30,ranged:true, shotColor:0xff6d00,shotCooldown:2.5},
+};
+
+// ══════════════════════════════════════════════════════════
+//  THREE.JS SETUP
+// ══════════════════════════════════════════════════════════
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x060308);
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=0.9;
+
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x04020a,0.09);
+
+// Camera — First person
+const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.05,80);
+camera.position.set(0,1.1,0);
+
+window.addEventListener('resize',()=>{
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+// ══════════════════════════════════════════════════════════
+//  MATERIALS (reused)
+// ══════════════════════════════════════════════════════════
+const MAT={
+  floor: new THREE.MeshLambertMaterial({color:0x6b5a3e}),
+  floorDark: new THREE.MeshLambertMaterial({color:0x574832}),
+  wall:  new THREE.MeshLambertMaterial({color:0x1e1628}),
+  wallDark: new THREE.MeshLambertMaterial({color:0x16101e}),
+  wallTop: new THREE.MeshLambertMaterial({color:0x181220}),
+  stair: new THREE.MeshLambertMaterial({color:0x3a2408,emissive:0x1a0c00}),
+  chest: new THREE.MeshLambertMaterial({color:0x8b6914}),
+  chestLid: new THREE.MeshLambertMaterial({color:0xc9a84c}),
+  potion: new THREE.MeshLambertMaterial({color:0x3498db,emissive:0x1040aa,transparent:true,opacity:0.9}),
+  player: new THREE.MeshLambertMaterial({color:0x4a90d9,emissive:0x1030aa}),
+  playerRobe: new THREE.MeshLambertMaterial({color:0x2255aa,emissive:0x0a2060}),
+  playerHat: new THREE.MeshLambertMaterial({color:0x1a3a7a}),
+  shadow: new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.35,depthWrite:false}),
+  torch: new THREE.MeshLambertMaterial({color:0x4a2a08}),
+  flame: new THREE.MeshBasicMaterial({color:0xff6600,transparent:true,opacity:0.9}),
+  stairGlow: new THREE.MeshBasicMaterial({color:0xc9a84c,transparent:true,opacity:0.6}),
+  healthBar: new THREE.MeshBasicMaterial({color:0xe74c3c,depthTest:false}),
+  healthBg:  new THREE.MeshBasicMaterial({color:0x220000,depthTest:false}),
+};
+
+// ══════════════════════════════════════════════════════════
+//  GAME STATE
+// ══════════════════════════════════════════════════════════
+let map,ents,player,floorNum,msgs=[],dead=false;
+let sceneObjects=[]; // things to remove on new floor
+let playerMesh,playerGroup;
+let cameraTarget=new THREE.Vector3();
+let shakeT=0,shakeStrength=0;
+let moveTimer=0;
+let torchFlames=[];
+let projectiles=[]; // active projectiles in flight
+
+function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function rndEl(a){return a[Math.floor(Math.random()*a.length)];}
+function tilePos(gx,gy){return{x:(gx-(COLS/2))*TILE, z:(gy-(ROWS/2))*TILE};}
+
+// ══════════════════════════════════════════════════════════
+//  MAP GENERATION
+// ══════════════════════════════════════════════════════════
+function makeMap(f){
+  const g=Array.from({length:ROWS},()=>Array(COLS).fill(T.WALL));
+  const rooms=[];
+  for(let i=0;i<50;i++){
+    const rw=rnd(3,6),rh=rnd(3,5);
+    const rx=rnd(1,COLS-rw-2),ry=rnd(1,ROWS-rh-2);
+    if(rooms.some(r=>rx<r.x+r.w+1&&rx+rw+1>r.x&&ry<r.y+r.h+1&&ry+rh+1>r.y))continue;
+    rooms.push({x:rx,y:ry,w:rw,h:rh});
+    for(let y=ry;y<ry+rh;y++)for(let x=rx;x<rx+rw;x++)g[y][x]=T.FLOOR;
+  }
+  for(let i=1;i<rooms.length;i++){
+    const a=rooms[i-1],b=rooms[i];
+    let cx=rnd(a.x,a.x+a.w-1),cy=rnd(a.y,a.y+a.h-1);
+    const tx=rnd(b.x,b.x+b.w-1),ty=rnd(b.y,b.y+b.h-1);
+    while(cx!==tx){g[cy][cx]=T.FLOOR;cx+=cx<tx?1:-1;}
+    while(cy!==ty){g[cy][cx]=T.FLOOR;cy+=cy<ty?1:-1;}
+  }
+  const lr=rooms[rooms.length-1];
+  g[rnd(lr.y+1,lr.y+lr.h-2)][rnd(lr.x+1,lr.x+lr.w-2)]=T.STAIR;
+  const potRooms=rooms.slice(1).sort(()=>Math.random()-0.5).slice(0,2);
+  potRooms.forEach(r=>{
+    for(let t=0;t<20;t++){
+      const ix=rnd(r.x,r.x+r.w-1),iy=rnd(r.y,r.y+r.h-1);
+      if(g[iy][ix]===T.FLOOR){g[iy][ix]=T.POTION;break;}
+    }
+  });
+  rooms.slice(1).forEach(r=>{
+    if(Math.random()<0.4){
+      const ix=rnd(r.x,r.x+r.w-1),iy=rnd(r.y,r.y+r.h-1);
+      if(g[iy][ix]===T.FLOOR)g[iy][ix]=T.CHEST;
+    }
+  });
+  const mTypes=
+    f<=1  ? ['goblin','archer'] :
+    f<=3  ? ['goblin','orc','archer'] :
+    f<=5  ? ['orc','troll','archer','hexer'] :
+    f<=7  ? ['troll','dragon','hexer','lich'] :
+    f<=10 ? ['dragon','lich','golem','wraith'] :
+    f<=12 ? ['golem','wraith','vampire','lich'] :
+              ['golem','vampire','wraith','demonlord'];
+  const monsters=[];
+  rooms.slice(1).forEach(r=>{
+    const n=rnd(1,Math.min(5,1+Math.floor(f/3)));
+    for(let i=0;i<n;i++){
+      const mx=rnd(r.x,r.x+r.w-1),my=rnd(r.y,r.y+r.h-1);
+      if(g[my][mx]===T.FLOOR){
+        const def=MDEFS[rndEl(mTypes)];
+        const scaledHp=Math.round(def.hp*(1+(f-1)*0.2));
+        monsters.push({...def,x:mx,y:my,maxHp:scaledHp,hp:scaledHp,mesh:null,
+          bobT:Math.random()*6.28, moving:false,fromX:mx,fromY:my,toX:mx,toY:my,prog:1});
+      }
+    }
+  });
+  const fr=rooms[0];
+  return{grid:g,start:{x:rnd(fr.x,fr.x+fr.w-1),y:rnd(fr.y,fr.y+fr.h-1)},monsters};
+}
+
+// ══════════════════════════════════════════════════════════
+//  SCENE BUILDING
+// ══════════════════════════════════════════════════════════
+function clearScene(){
+  sceneObjects.forEach(o=>scene.remove(o));
+  sceneObjects=[];
+  torchFlames=[];
+  // Remove any in-flight projectile meshes
+  projectiles.forEach(p=>{if(p.mesh)scene.remove(p.mesh);});
+  projectiles=[];
+}
+
+function addObj(obj){scene.add(obj);sceneObjects.push(obj);return obj;}
+
+function buildScene(){
+  clearScene();
+
+  // Ambient light — dim dungeon feel
+  const amb=new THREE.AmbientLight(0x2a1e14,2.4);
+  addObj(amb);
+
+  // Ceiling dim fill
+  const hemi=new THREE.HemisphereLight(0x0a0518,0x000000,0.6);
+  addObj(hemi);
+
+  const WALL_H=2.0, FLOOR_Y=0, WALL_Y=WALL_H/2;
+
+  const floorGeo=new THREE.BoxGeometry(TILE-0.04,0.22,TILE-0.04);
+  const wallGeo=new THREE.BoxGeometry(TILE,WALL_H,TILE);
+
+  for(let gy=0;gy<ROWS;gy++){
+    for(let gx=0;gx<COLS;gx++){
+      const t=map[gy][gx];
+      const p=tilePos(gx,gy);
+      if(t===T.WALL){
+        const m=new THREE.Mesh(wallGeo,MAT.wall);
+        m.position.set(p.x,WALL_Y,p.z);
+        m.receiveShadow=true; m.castShadow=true;
+        addObj(m);
+        // top cap slightly different color
+        const topGeo=new THREE.BoxGeometry(TILE,0.08,TILE);
+        const top=new THREE.Mesh(topGeo,MAT.wallTop);
+        top.position.set(p.x,WALL_H+0.04,p.z);
+        addObj(top);
+      } else {
+        // Floor tile
+        const mat=(gx+gy)%2===0?MAT.floor:MAT.floorDark;
+        const fl=new THREE.Mesh(floorGeo,mat);
+        fl.position.set(p.x,FLOOR_Y,p.z);
+        fl.receiveShadow=true;
+        addObj(fl);
+
+        if(t===T.STAIR) buildStair(p.x,p.z);
+        if(t===T.CHEST) buildChest(p.x,p.z,gx,gy);
+        if(t===T.POTION) buildPotion(p.x,p.z,gx,gy);
+      }
+    }
+  }
+
+  // Place torches on walls adjacent to floor
+  for(let gy=1;gy<ROWS-1;gy++){
+    for(let gx=1;gx<COLS-1;gx++){
+      if(map[gy][gx]===T.WALL && Math.random()<0.08){
+        // check if floor is nearby
+        let adj=false;
+        for(let d of[[-1,0],[1,0],[0,-1],[0,1]]){
+          if(map[gy+d[1]]&&map[gy+d[1]][gx+d[0]]===T.FLOOR){adj=true;break;}
+        }
+        if(adj) buildTorch(gx,gy);
+      }
+    }
+  }
+
+  // Build player mesh
+  buildPlayerMesh();
+
+  // Build monster meshes
+  ents.forEach(e=>buildMonsterMesh(e));
+}
+
+function buildStair(x,z){
+  const geo=new THREE.BoxGeometry(TILE*0.7,0.35,TILE*0.7);
+  const m=new THREE.Mesh(geo,MAT.stair);
+  m.position.set(x,0.28,z);
+  addObj(m);
+  // glow ring
+  const ringGeo=new THREE.RingGeometry(0.5,0.85,16);
+  const ring=new THREE.Mesh(ringGeo,MAT.stairGlow);
+  ring.rotation.x=-Math.PI/2;
+  ring.position.set(x,0.12,z);
+  ring.userData.stairGlow=true;
+  addObj(ring);
+  // point light above stairs
+  const sl=new THREE.PointLight(0xc9a84c,1.2,4);
+  sl.position.set(x,1.5,z);
+  addObj(sl);
+}
+
+function buildChest(x,z,gx,gy){
+  const g=new THREE.Group();
+  const base=new THREE.Mesh(new THREE.BoxGeometry(0.65,0.45,0.5),MAT.chest);
+  base.position.y=0.33;
+  const lid=new THREE.Mesh(new THREE.BoxGeometry(0.65,0.18,0.5),MAT.chestLid);
+  lid.position.y=0.61;
+  g.add(base,lid);
+  g.position.set(x,0.11,z);
+  g.userData={type:'chest',gx,gy};
+  addObj(g);
+  const cl=new THREE.PointLight(0xc9a84c,0.8,2.5);
+  cl.position.set(x,1.2,z);
+  addObj(cl);
+}
+
+function buildPotion(x,z,gx,gy){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.22,0.5,8),MAT.potion);
+  body.position.y=0.36;
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.12,0.18,8),MAT.potion);
+  neck.position.y=0.7;
+  g.add(body,neck);
+  g.position.set(x,0.11,z);
+  g.userData={type:'potion',gx,gy};
+  addObj(g);
+  const pl=new THREE.PointLight(0x3498db,0.7,2.2);
+  pl.position.set(x,1.1,z);
+  addObj(pl);
+}
+
+function buildTorch(gx,gy){
+  const p=tilePos(gx,gy);
+  const g=new THREE.Group();
+  // stick
+  const stick=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.5,6),MAT.torch);
+  stick.position.y=0.8;
+  g.add(stick);
+  // flame top
+  const flameGeo=new THREE.ConeGeometry(0.12,0.28,8);
+  const flame=new THREE.Mesh(flameGeo,new THREE.MeshBasicMaterial({color:0xff6600,transparent:true,opacity:0.9}));
+  flame.position.y=1.2;
+  g.add(flame);
+  const innerFlame=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.2,8),
+    new THREE.MeshBasicMaterial({color:0xffdd00,transparent:true,opacity:0.95}));
+  innerFlame.position.y=1.2;
+  g.add(innerFlame);
+  g.position.set(p.x,0,p.z);
+  addObj(g);
+  // torch light
+  const tl=new THREE.PointLight(0xff8822,1.6,7);
+  tl.position.set(p.x,1.4,p.z);
+  tl.castShadow=false;
+  tl.userData={torchLight:true,baseIntensity:1.6,baseY:1.4};
+  addObj(tl);
+  torchFlames.push({flame,innerFlame,light:tl,phase:Math.random()*6.28});
+}
+
+function buildPlayerMesh(){
+  if(playerGroup){scene.remove(playerGroup);sceneObjects=sceneObjects.filter(o=>o!==playerGroup);}
+  const g=new THREE.Group();
+  // Body (robe)
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.36,0.7,8),MAT.playerRobe);
+  body.position.y=0.45;
+  // Head
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.22,10,10),MAT.player);
+  head.position.y=1.02;
+  // Hat (wizard cone)
+  const hat=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.52,8),MAT.playerHat);
+  hat.position.y=1.42;
+  // Staff
+  const staff=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.1,6),
+    new THREE.MeshLambertMaterial({color:0x5a3a10}));
+  staff.position.set(0.3,0.72,0);
+  staff.rotation.z=0.15;
+  // Staff gem
+  const gem=new THREE.Mesh(new THREE.SphereGeometry(0.09,8,8),
+    new THREE.MeshBasicMaterial({color:0x44aaff,transparent:true,opacity:0.9}));
+  gem.position.set(0.38,1.3,0);
+  // Glow under player
+  const glowGeo=new THREE.CircleGeometry(0.5,16);
+  const glow=new THREE.Mesh(glowGeo,new THREE.MeshBasicMaterial({color:0x4488ff,transparent:true,opacity:0.3,depthWrite:false}));
+  glow.rotation.x=-Math.PI/2;
+  glow.position.y=0.12;
+  g.add(body,head,hat,staff,gem,glow);
+  // Shadow blob
+  const shd=new THREE.Mesh(new THREE.CircleGeometry(0.38,12),MAT.shadow);
+  shd.rotation.x=-Math.PI/2;
+  shd.position.y=0.12;
+  g.add(shd);
+  // Point light on player
+  const pl=new THREE.PointLight(0x4488ff,0.8,4);
+  pl.position.y=1.0;
+  g.add(pl);
+  playerGroup=g;
+  g.visible=false; // first-person: player mesh hidden
+  scene.add(g);
+  sceneObjects.push(g);
+  playerMesh=g;
+}
+
+function buildMonsterMesh(e){
+  const p=tilePos(e.x,e.y);
+  const g=new THREE.Group();
+  const bodyMat=new THREE.MeshLambertMaterial({color:e.bodyColor});
+  const headMat=new THREE.MeshLambertMaterial({color:e.color});
+  // body
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.5,e.h*0.65,0.5),bodyMat);
+  body.position.y=e.h*0.38;
+  // head
+  const head=new THREE.Mesh(new THREE.SphereGeometry(e.h*0.28,8,8),headMat);
+  head.position.y=e.h*0.85;
+  // eyes
+  for(let ex of[-0.08,0.08]){
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(0.045,6,6),
+      new THREE.MeshBasicMaterial({color:0xff3300}));
+    eye.position.set(ex,e.h*0.92,e.h*0.22);
+    g.add(eye);
+  }
+  // Ranged enemies: glowing orb weapon + ring indicator
+  if(e.ranged){
+    const orbMat=new THREE.MeshBasicMaterial({color:e.shotColor,transparent:true,opacity:0.85});
+    const orb=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8),orbMat);
+    orb.position.set(0.3,e.h*0.7,0);
+    g.add(orb);
+    // subtle glow light on ranged enemy
+    const gl=new THREE.PointLight(e.shotColor,0.6,2.5);
+    gl.position.set(0,e.h*0.8,0);
+    g.add(gl);
+    // ground ring to signal ranged type
+    const ringGeo=new THREE.RingGeometry(0.42,0.52,20);
+    const ring=new THREE.Mesh(ringGeo,new THREE.MeshBasicMaterial({color:e.shotColor,transparent:true,opacity:0.4,depthWrite:false,side:THREE.DoubleSide}));
+    ring.rotation.x=-Math.PI/2;
+    ring.position.y=0.13;
+    g.add(ring);
+    e._orbMesh=orb;
+  }
+  // shadow
+  const shd=new THREE.Mesh(new THREE.CircleGeometry(0.3,12),MAT.shadow);
+  shd.rotation.x=-Math.PI/2;
+  shd.position.y=0.12;
+  // HP bar background
+  const hpBg=new THREE.Mesh(new THREE.PlaneGeometry(0.7,0.09),MAT.healthBg);
+  hpBg.position.set(0,e.h*1.3,0);
+  hpBg.rotation.x=-0.4;
+  hpBg.renderOrder=999;
+  // HP bar fill
+  const hpFill=new THREE.Mesh(new THREE.PlaneGeometry(0.7,0.09),
+    new THREE.MeshBasicMaterial({color:e.color,depthTest:false}));
+  hpFill.position.set(0,e.h*1.3,0.001);
+  hpFill.rotation.x=-0.4;
+  hpFill.renderOrder=1000;
+  g.add(body,head,shd,hpBg,hpFill);
+  g.position.set(p.x,0,p.z);
+  e.mesh=g;
+  e.hpFill=hpFill;
+  e.bobT=e.bobT||0;
+  e._shotTimer=e.ranged?(Math.random()*e.shotCooldown):0; // stagger initial shots
+  addObj(g);
+  return g;
+}
+
+// ══════════════════════════════════════════════════════════
+//  GAME INIT
+// ══════════════════════════════════════════════════════════
+function startGame(){
+  document.getElementById('ov').style.display='none';
+  floorNum=1; dead=false; msgs=[];
+  player={
+    x:0,y:0,hp:30,maxHp:30,atk:3,gold:0,xp:0,xpNext:20,level:1,
+    moving:false,fromX:0,fromY:0,toX:0,toY:0,prog:1,bobT:0,
+    facing:new THREE.Vector3(0,0,-1),
+    fpYaw:Math.PI, // radians, starts facing into dungeon
+    shotCooldown:0, _shotCdBase:1.0,
+    mana:3, maxMana:3,
+    _armor:0, _shotCdBonus:0, dashCooldown:0, _dashDx:0, _dashDy:0, _dashProg:0, _dashing:false
+  };
+  applyUpgradesToPlayer(player);
+  shakeT=0;
+  loadFloor(false);
+}
+
+function loadFloor(regen){
+  const m=makeMap(floorNum);
+  map=m.grid; ents=m.monsters;
+  player.x=m.start.x; player.y=m.start.y;
+  player.moving=false; player.prog=1;
+  player.fromX=player.x; player.fromY=player.y;
+  player.toX=player.x; player.toY=player.y;
+  player.fpYaw=Math.PI; // face into dungeon
+  buildScene();
+  // snap camera
+  const pp=tilePos(player.x,player.y);
+  cameraTarget.set(pp.x,0,pp.z);
+  camera.position.set(pp.x,14,pp.z+10);
+  if(regen){
+    const heal=Math.floor(player.maxHp*0.75);
+    player.hp=Math.min(player.maxHp,player.hp+heal);
+    // ARCANE SURGE: +2 mana per rank on floor entry
+    const surgeBonus=(upgradeBought['manarefill']||0)*2;
+    if(surgeBonus>0){
+      player.mana=Math.min(player.mana+surgeBonus, player.maxMana);
+      log(`Floor ${floorNum}. Restored ${heal} HP · ✨+${surgeBonus} mana. ❤`);
+    } else {
+      log(`Floor ${floorNum}. Restored ${heal} HP. ❤`);
+    }
+  } else {
+    log(`Floor 1. The darkness deepens...`);
+  }
+  updateHUD();
+}
+
+// ══════════════════════════════════════════════════════════
+//  HUD
+// ══════════════════════════════════════════════════════════
+function updateHUD(){
+  const p=player;
+  document.getElementById('hpf').style.width=(Math.max(0,p.hp)/p.maxHp*100)+'%';
+  document.getElementById('hpv').textContent=Math.max(0,p.hp)+'/'+p.maxHp;
+  document.getElementById('xpf').style.width=(p.xp/p.xpNext*100)+'%';
+  document.getElementById('xpv').textContent=p.xp+'/'+p.xpNext;
+  document.getElementById('atkv').textContent=p.atk;
+  document.getElementById('goldv').textContent=p.gold;
+  document.getElementById('flrv').textContent=floorNum;
+  document.getElementById('lvlv').textContent=p.level;
+  // Mana pips
+  const pipsEl=document.getElementById('manapips');
+  if(pipsEl){
+    pipsEl.innerHTML='';
+    const displayMax=Math.min(p.maxMana,10);
+    const scale=p.maxMana>10?p.mana/p.maxMana:null;
+    for(let i=0;i<displayMax;i++){
+      const d=document.createElement('div');
+      const filled=scale!==null ? i<Math.round(scale*displayMax) : i<p.mana;
+      d.className='mpip '+(filled?'full':'empty');
+      pipsEl.appendChild(d);
+    }
+  }
+  document.getElementById('manav').textContent=p.mana+'/'+p.maxMana;
+  const dv=document.getElementById('dashv');
+  if(dv){
+    if(p.dashCooldown<=0){dv.textContent='READY';dv.style.color='#ff8800';}
+    else{dv.textContent=p.dashCooldown.toFixed(1)+'s';dv.style.color='#664422';}
+  }
+}
+
+function log(t){
+  msgs.unshift(t);if(msgs.length>3)msgs.pop();
+  document.getElementById('log').innerHTML=msgs.slice(0,2).join('<br>');
+}
+
+// ══════════════════════════════════════════════════════════
+//  FLOATING DAMAGE NUMBERS (DOM-based, projected)
+// ══════════════════════════════════════════════════════════
+function spawnFloat(txt,wx,wy,wz,col){
+  const v=new THREE.Vector3(wx,wy,wz).project(camera);
+  const sx=(v.x*0.5+0.5)*window.innerWidth;
+  const sy=(-v.y*0.5+0.5)*window.innerHeight;
+  const el=document.createElement('div');
+  el.className='ft';
+  el.style.left=sx+'px';
+  el.style.top=sy+'px';
+  el.style.color=col;
+  el.textContent=txt;
+  document.getElementById('floats').appendChild(el);
+  setTimeout(()=>el.remove(),1000);
+}
+
+// ══════════════════════════════════════════════════════════
+//  PROJECTILES
+// ══════════════════════════════════════════════════════════
+function spawnProjectile(fromMon){
+  const sp=tilePos(fromMon.x,fromMon.y);
+  const ep=tilePos(player.x,player.y);
+  // Build mesh: glowing orb + point light
+  const g=new THREE.Group();
+  const core=new THREE.Mesh(
+    new THREE.SphereGeometry(0.14,8,8),
+    new THREE.MeshBasicMaterial({color:fromMon.shotColor})
+  );
+  const glow=new THREE.Mesh(
+    new THREE.SphereGeometry(0.22,8,8),
+    new THREE.MeshBasicMaterial({color:fromMon.shotColor,transparent:true,opacity:0.35})
+  );
+  const light=new THREE.PointLight(fromMon.shotColor,1.2,3);
+  g.add(core,glow,light);
+  g.position.set(sp.x, fromMon.h*0.7, sp.z);
+  scene.add(g);
+  projectiles.push({
+    mesh:g,
+    sx:sp.x, sz:sp.z,
+    ex:ep.x, ez:ep.z,
+    prog:0,
+    speed:6.5,        // world units per second
+    dmg:Math.max(1,fromMon.atk+rnd(-1,1)),
+    active:true,
+    phase:Math.random()*6.28
+  });
+}
+
+function playerShoot(){
+  if(dead||player.shotCooldown>0) return;
+  // No mana = can't shoot
+  if(player.mana<=0){
+    const pp=tilePos(player.x,player.y);
+    spawnFloat('NO MANA!',pp.x,2.0,pp.z,'#a78bfa');
+    return;
+  }
+  // Find the closest enemy in the player's facing direction (or just closest overall)
+  let target=null;
+  let bestScore=Infinity;
+  const pp=tilePos(player.x,player.y);
+  ents.filter(e=>e.hp>0).forEach(e=>{
+    const ep=tilePos(e.x,e.y);
+    const dx=ep.x-pp.x, dz=ep.z-pp.z;
+    const dist=Math.sqrt(dx*dx+dz*dz);
+    const dot=(player.facing.x*dx+player.facing.z*dz)/Math.max(dist,0.01);
+    const score=dist*(dot<0?3:1)*(1-dot*0.4);
+    if(score<bestScore){bestScore=score;target=e;}
+  });
+  if(!target) return; // no enemies to shoot
+
+  const ep=tilePos(target.x,target.y);
+
+  // Build player shot mesh — purple/gold arcane bolt
+  const g=new THREE.Group();
+  const core=new THREE.Mesh(
+    new THREE.SphereGeometry(0.16,8,8),
+    new THREE.MeshBasicMaterial({color:0xc084fc})
+  );
+  const outer=new THREE.Mesh(
+    new THREE.SphereGeometry(0.26,8,8),
+    new THREE.MeshBasicMaterial({color:0xffd700,transparent:true,opacity:0.28})
+  );
+  const light=new THREE.PointLight(0xc084fc,1.6,4);
+  g.add(core,outer,light);
+  g.position.set(pp.x,1.0,pp.z);
+  scene.add(g);
+
+  // Aim toward target — update fpYaw to face target
+  const ang=Math.atan2(ep.x-pp.x,ep.z-pp.z);
+  player.fpYaw=ang;
+
+  projectiles.push({
+    mesh:g,
+    sx:pp.x, sz:pp.z,
+    ex:ep.x, ez:ep.z,
+    prog:0,
+    speed:9,
+    dmg:Math.max(1,player.atk+rnd(0,2)),
+    active:true,
+    phase:Math.random()*6.28,
+    fromPlayer:true,
+    targetMon:target
+  });
+
+  // Deduct 1 mana and apply 1s cooldown
+  player.mana=Math.max(0,player.mana-1);
+  player.shotCooldown=player._shotCdBase||1.0;
+  updateHUD();
+}
+
+function updateProjectiles(dt,now){
+  for(let i=projectiles.length-1;i>=0;i--){
+    const p=projectiles[i];
+    if(!p.active){projectiles.splice(i,1);continue;}
+    // Move along straight line
+    const totalDist=Math.sqrt((p.ex-p.sx)**2+(p.ez-p.sz)**2);
+    p.prog+=dt*p.speed/Math.max(totalDist,0.01);
+    const t=Math.min(p.prog,1);
+    const wx=p.sx+(p.ex-p.sx)*t;
+    const wz=p.sz+(p.ez-p.sz)*t;
+    const waveY=0.75+Math.sin(p.phase+t*Math.PI)*0.15;
+    p.mesh.position.set(wx,waveY,wz);
+    p.mesh.rotation.y+=dt*10;
+
+    if(p.fromPlayer){
+      // ── Player shot: check hit against all enemies ──
+      let hit=false;
+      for(const mon of ents){
+        if(mon.hp<=0)continue;
+        const ep=tilePos(mon.x,mon.y);
+        const ddx=wx-ep.x, ddz=wz-ep.z;
+        if(Math.sqrt(ddx*ddx+ddz*ddz)<0.65){
+          // Hit enemy!
+          scene.remove(p.mesh); p.active=false;
+          mon.hp-=p.dmg;
+          spawnFloat('-'+p.dmg,ep.x,1.8,ep.z,'#ffe566');
+          shakeT=4; shakeStrength=0.08;
+          if(mon.hp<=0){
+            const xg=Math.round(mon.xp*(1+(upgradeBought['xpboost']||0)*0.2));
+            const gg=rnd(...mon.gold);
+            player.xp+=xg; player.gold+=gg;
+            log(`✨ Shot the ${mon.name}! +${xg}xp +${gg}g`);
+            spawnFloat('💀',ep.x,2,ep.z,'#ffffff');
+            if(mon.mesh){scene.remove(mon.mesh);sceneObjects=sceneObjects.filter(o=>o!==mon.mesh);}
+            ents=ents.filter(e=>e!==mon);
+            const lsPctS=(upgradeBought['lifesteal']||0)*0.01;
+            if(lsPctS>0){
+              const lsHealS=Math.max(1,Math.floor(player.maxHp*lsPctS));
+              player.hp=Math.min(player.maxHp,player.hp+lsHealS);
+              spawnFloat('+'+lsHealS,ep.x,2.5,ep.z,'#ff4d6d');
+            }
+            checkLvl();
+          } else {
+            updateMonsterHPBar(mon);
+            log(`✨ Shot ${mon.name} for ${p.dmg}!`);
+          }
+          updateHUD();
+          hit=true; break;
+        }
+      }
+      if(hit) continue;
+    } else {
+      // ── Enemy shot: check hit against player ──
+      if(playerGroup){
+        const pdx=wx-playerGroup.position.x;
+        const pdz=wz-playerGroup.position.z;
+        if(Math.sqrt(pdx*pdx+pdz*pdz)<0.55){
+          scene.remove(p.mesh); p.active=false;
+          const projDmg=Math.max(1,p.dmg-(player._armor||0));
+          player.hp-=projDmg;
+          shakeT=5; shakeStrength=0.08;
+          spawnFloat('-'+projDmg,wx,1.6,wz,'#ff4400');
+          if(player.hp<=0){killPlayer();}
+          else updateHUD();
+          continue;
+        }
+      }
+    }
+    // Expire when reached destination
+    if(p.prog>=1){
+      scene.remove(p.mesh);
+      p.active=false;
+    }
+  }
+}
+const KEYS={};
+document.addEventListener('keydown',e=>{
+  KEYS[e.key]=true;
+  if(e.key===' '){e.preventDefault();playerShoot();}
+  if(e.key==='f'||e.key==='F'){e.preventDefault();playerDash();}
+});
+document.addEventListener('keyup',e=>{KEYS[e.key]=false;});
+
+// ── Drag mouse-look (works in iframes) ──
+let mouseDX=0;
+const MOUSE_SENS=0.006;
+let _mlDown=false, _mlLastX=0;
+
+canvas.addEventListener('mousedown',e=>{
+  if(e.button===0){ _mlDown=true; _mlLastX=e.clientX; }
+});
+document.addEventListener('mouseup',e=>{
+  if(e.button===0) _mlDown=false;
+});
+document.addEventListener('mousemove',e=>{
+  if(_mlDown && !dead){
+    mouseDX += e.clientX - _mlLastX;
+    _mlLastX = e.clientX;
+  } else {
+    _mlLastX = e.clientX;
+  }
+});
+
+// Touch swipe look
+let _tlDown=false, _tlLastX=0;
+canvas.addEventListener('touchstart',e=>{
+  if(e.touches.length===1){ _tlDown=true; _tlLastX=e.touches[0].clientX; }
+},{passive:true});
+document.addEventListener('touchend',()=>{ _tlDown=false; });
+document.addEventListener('touchmove',e=>{
+  if(_tlDown && !dead && e.touches.length===1){
+    mouseDX += (e.touches[0].clientX - _tlLastX)*1.5;
+    _tlLastX = e.touches[0].clientX;
+  }
+},{passive:true});
+
+// D-pad
+['du','dd','dl','dr'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener('touchstart',e=>{e.preventDefault();KEYS[id]=true;});
+  el.addEventListener('touchend',e=>{e.preventDefault();KEYS[id]=false;});
+  el.addEventListener('mousedown',e=>{KEYS[id]=true;});
+  el.addEventListener('mouseup',e=>{KEYS[id]=false;});
+});
+
+function getInput(){
+  const fwdX=Math.round(Math.sin(player.fpYaw)), fwdY=-Math.round(Math.cos(player.fpYaw));
+  if(KEYS['w']||KEYS['W']||KEYS['ArrowUp']   ||KEYS['du']) return[fwdX,fwdY];
+  if(KEYS['s']||KEYS['S']||KEYS['ArrowDown'] ||KEYS['dd']) return[-fwdX,-fwdY];
+  return null;
+}
+
+function getTurnInput(){
+  if(KEYS['ArrowLeft'] ||KEYS['a']||KEYS['A']||KEYS['q']||KEYS['Q']) return -1;
+  if(KEYS['ArrowRight']||KEYS['d']||KEYS['D']||KEYS['e']||KEYS['E']) return  1;
+  return 0;
+}
+
+function tryMove(dx,dy){
+  if(dead||player.moving) return;
+  const nx=player.x+dx,ny=player.y+dy;
+  if(nx<0||nx>=COLS||ny<0||ny>=ROWS) return;
+  if(map[ny][nx]===T.WALL) return;
+  // Player attack = 1-tile bump only (move into enemy tile)
+  const mon=ents.find(e=>e.x===nx&&e.y===ny&&e.hp>0);
+  if(mon){doAttack(mon);return;}
+  // start moving
+  player.moving=true;
+  player.fromX=player.x; player.fromY=player.y;
+  player.toX=nx; player.toY=ny;
+  player.prog=0;
+  // facing is driven by fpYaw in animate loop
+}
+
+function playerDash(){
+  if(dead||player.dashCooldown>0||player.moving||player._dashing) return;
+  // Dash 3 tiles in facing direction, hit all enemies along the path
+  // Use cardinal direction closest to current fpYaw
+  const fsin=Math.sin(player.fpYaw),fcos=Math.cos(player.fpYaw);
+  const dx=Math.abs(fsin)>=Math.abs(fcos)?Math.sign(fsin):0;
+  const dy=Math.abs(fcos)>Math.abs(fsin)?Math.round(fcos):0;
+  if(dx===0&&dy===0) return; // no facing set yet
+  const dashDmg=Math.max(1,Math.round((player.atk+rnd(-1,1))*1.1));
+  let hitsAny=false;
+  for(let step=1;step<=3;step++){
+    const nx=player.x+dx*step, ny=player.y+dy*step;
+    if(nx<0||nx>=COLS||ny<0||ny>=ROWS||map[ny][nx]===T.WALL) break;
+    const mon=ents.find(e=>e.x===nx&&e.y===ny&&e.hp>0);
+    if(mon){
+      mon.hp-=dashDmg;
+      const wp=tilePos(mon.x,mon.y);
+      spawnFloat('-'+dashDmg,wp.x,2.0,wp.z,'#ff8800');
+      shakeT=5; shakeStrength=0.1;
+      hitsAny=true;
+      if(mon.hp<=0){
+        const xg=Math.round(mon.xp*(1+(upgradeBought['xpboost']||0)*0.2));
+        const gg=rnd(...mon.gold);
+        player.xp+=xg; player.gold+=gg;
+        log(`💨 Dash killed ${mon.name}! +${xg}xp +${gg}g`);
+        spawnFloat('💀',wp.x,2.4,wp.z,'#ffffff');
+        if(mon.mesh){scene.remove(mon.mesh);sceneObjects=sceneObjects.filter(o=>o!==mon.mesh);}
+        ents=ents.filter(e=>e!==mon);
+        const lsPctD=(upgradeBought['lifesteal']||0)*0.01;
+        if(lsPctD>0){
+          const lsHealD=Math.max(1,Math.floor(player.maxHp*lsPctD));
+          player.hp=Math.min(player.maxHp,player.hp+lsHealD);
+          spawnFloat('+'+lsHealD,wp.x,2.8,wp.z,'#ff4d6d');
+        }
+        checkLvl();
+      } else {
+        updateMonsterHPBar(mon);
+        log(`💨 Dashed through ${mon.name} for ${dashDmg}!`);
+      }
+    }
+  }
+  // Move player forward up to 3 tiles (stop at wall)
+  let landX=player.x, landY=player.y;
+  for(let step=1;step<=3;step++){
+    const nx=player.x+dx*step, ny=player.y+dy*step;
+    if(nx<0||nx>=COLS||ny<0||ny>=ROWS||map[ny][nx]===T.WALL) break;
+    landX=nx; landY=ny;
+  }
+  // Teleport-style fast move: snap position and animate via fromX/toX
+  player._dashing=true;
+  player.moving=true;
+  player.fromX=player.x; player.fromY=player.y;
+  player.toX=landX; player.toY=landY;
+  player.prog=0;
+  player.dashCooldown=3.0; // 3 second cooldown
+  // Spawn dash trail particles (orange streak floats)
+  const pp=tilePos(player.x,player.y);
+  spawnFloat('💨',pp.x,1.5,pp.z,'#ff8800');
+  monAI();
+  updateHUD();
+}
+
+function doAttack(mon){
+  const dmg=Math.max(1,player.atk+rnd(-1,1));
+  mon.hp-=dmg;
+  shakeT=8; shakeStrength=0.12;
+  const wp=tilePos(mon.x,mon.y);
+  spawnFloat('-'+dmg,wp.x,1.8,wp.z,'#ff4444');
+  if(mon.hp<=0){
+    const xg=Math.round(mon.xp*(1+(upgradeBought['xpboost']||0)*0.2));
+    const gg=Math.round(rnd(...mon.gold)*(1+(upgradeBought['chest']||0)*0.0));
+    const goldBonusMult=1; // chest bonus handled separately below
+    player.xp+=xg; player.gold+=gg;
+    log(`⚔ Slew the ${mon.name}! +${xg}xp +${gg}g`);
+    spawnFloat('💀',wp.x,2,wp.z,'#ffffff');
+    if(mon.mesh){scene.remove(mon.mesh);sceneObjects=sceneObjects.filter(o=>o!==mon.mesh);}
+    ents=ents.filter(e=>e!==mon);
+    // Lifesteal on kill
+    const lsPct=(upgradeBought['lifesteal']||0)*0.01;
+    if(lsPct>0){
+      const lsHeal=Math.max(1,Math.floor(player.maxHp*lsPct));
+      player.hp=Math.min(player.maxHp,player.hp+lsHeal);
+      spawnFloat('+'+lsHeal,wp.x,2.5,wp.z,'#ff4d6d');
+    }
+    checkLvl();
+  } else {
+    updateMonsterHPBar(mon);
+    log(`Hit ${mon.name} for ${dmg}.`);
+    const cdRaw=Math.max(1,mon.atk+rnd(-1,0));
+    const cd=Math.max(1,cdRaw-(player._armor||0));
+    player.hp-=cd;
+    const pp=tilePos(player.x,player.y);
+    spawnFloat('-'+cd,pp.x,1.8,pp.z,'#ff6600');
+    log(`${mon.name} hits back for ${cd}!`);
+    if(player.hp<=0){killPlayer();return;}
+  }
+  monAI();
+  updateHUD();
+}
+
+function updateMonsterHPBar(mon){
+  if(!mon.hpFill)return;
+  const pct=Math.max(0,mon.hp/mon.maxHp);
+  mon.hpFill.scale.x=pct;
+  mon.hpFill.position.x=(pct-1)*0.35;
+}
+
+function landOnTile(){
+  const t=map[player.y][player.x];
+  const pp=tilePos(player.x,player.y);
+  if(t===T.STAIR){
+    floorNum++;
+    if(floorNum>15){winGame();return;}
+    loadFloor(true); return;
+  }
+  if(t===T.CHEST){
+    const chestMult=1+(upgradeBought['chest']||0)*0.5;
+    const g=Math.round(rnd(5+floorNum,15+floorNum*2)*chestMult);
+    player.gold+=g;
+    map[player.y][player.x]=T.FLOOR;
+    // remove chest mesh
+    sceneObjects.filter(o=>o.userData&&o.userData.type==='chest'&&o.userData.gx===player.x&&o.userData.gy===player.y)
+      .forEach(o=>{scene.remove(o);sceneObjects=sceneObjects.filter(s=>s!==o);});
+    spawnFloat('+'+g+'g',pp.x,1.5,pp.z,'#c9a84c');
+    log(`Opened chest — +${g} gold!`);
+  }
+  if(t===T.POTION){
+    const potBonus=(upgradeBought['potency']||0)*5;
+    const h=rnd(10,18+floorNum)+potBonus;
+    player.hp=Math.min(player.maxHp,player.hp+h);
+    map[player.y][player.x]=T.FLOOR;
+    sceneObjects.filter(o=>o.userData&&o.userData.type==='potion'&&o.userData.gx===player.x&&o.userData.gy===player.y)
+      .forEach(o=>{scene.remove(o);sceneObjects=sceneObjects.filter(s=>s!==o);});
+    spawnFloat('+'+h+'HP',pp.x,1.5,pp.z,'#27ae60');
+    log(`Drank potion — +${h} HP!`);
+  }
+  monAI();
+  updateHUD();
+}
+
+function monAI(){
+  ents.filter(e=>e.hp>0).forEach(mon=>{
+    const dx=player.x-mon.x,dy=player.y-mon.y;
+    const dist=Math.abs(dx)+Math.abs(dy);
+
+    if(mon.ranged){
+      // ── Ranged AI ──
+      // If player is adjacent (dist=1), try to back away
+      if(dist<=1){
+        // retreat: move away from player
+        const rx=mon.x-Math.sign(dx), ry=mon.y-Math.sign(dy);
+        if(rx>=0&&rx<COLS&&ry>=0&&ry<ROWS&&map[ry][rx]!==T.WALL
+          &&!ents.find(e=>e!==mon&&e.x===rx&&e.y===ry&&e.hp>0)){
+          mon.x=rx; mon.y=ry;
+        }
+        // still deal touch damage if couldn't retreat
+        else{
+          const dRaw=Math.max(1,mon.atk+rnd(-1,0));
+          const d=Math.max(1,dRaw-(player._armor||0));
+          player.hp-=d;
+          const pp=tilePos(player.x,player.y);
+          spawnFloat('-'+d,pp.x,1.8,pp.z,'#ff3333');
+          if(player.hp<=0){killPlayer();return;}
+          updateHUD();
+        }
+      }
+      // Shooting is handled in the per-frame timer update (see animate)
+    } else {
+      // ── Melee AI ──
+      if(dist===1){
+        const dRaw=Math.max(1,mon.atk+rnd(-1,0));
+        const d=Math.max(1,dRaw-(player._armor||0));
+        player.hp-=d;
+        const pp=tilePos(player.x,player.y);
+        spawnFloat('-'+d,pp.x,1.8,pp.z,'#ff3333');
+        if(player.hp<=0){killPlayer();return;}
+        updateHUD();
+      } else if(dist<7){
+        const sx=Math.abs(dx)>=Math.abs(dy)?Math.sign(dx):0;
+        const sy=sx===0?Math.sign(dy):0;
+        const nx2=mon.x+sx,ny2=mon.y+sy;
+        if(nx2>=0&&nx2<COLS&&ny2>=0&&ny2<ROWS&&map[ny2][nx2]!==T.WALL
+          &&!ents.find(e=>e!==mon&&e.x===nx2&&e.y===ny2&&e.hp>0)
+          &&!(nx2===player.x&&ny2===player.y)){
+          mon.x=nx2; mon.y=ny2;
+        }
+      }
+    }
+  });
+}
+
+function checkLvl(){
+  while(player.xp>=player.xpNext){
+    player.xp-=player.xpNext;
+    player.level++;
+    player.xpNext=Math.floor(player.xpNext*1.65);
+    player.atk+=5;
+    player.maxHp+=10;
+    const heal=Math.floor(player.maxHp*0.4);
+    player.hp=Math.min(player.maxHp,player.hp+heal);
+    // Mana: gain (level + 2) new shots per level-up, added on top of remaining mana, capped at maxMana
+    const manaGain=player.level+2;
+    player.maxMana=player.maxMana+manaGain;
+    player.mana=Math.min(player.mana+manaGain, player.maxMana);
+    log(`⬆ LEVEL ${player.level}! ATK+5, MaxHP+10 · ✨ +${manaGain} Mana (${player.mana}/${player.maxMana})!`);
+    const pp=tilePos(player.x,player.y);
+    spawnFloat('LEVEL UP!',pp.x,2.2,pp.z,'#ffe08a');
+    spawnFloat('✨ +'+manaGain+' MANA',pp.x,2.8,pp.z,'#a78bfa');
+  }
+}
+
+function killPlayer(){
+  dead=true;
+  bankGold+=player.gold;
+  updateHUD();
+  setTimeout(()=>{
+    const ov=document.getElementById('ov');
+    ov.innerHTML=`
+      <div id="menu-panel" style="display:flex;flex-direction:column;align-items:center;">
+        <h2>💀 PERISHED</h2>
+        <div class="sub">
+          <div>Floor reached: ${floorNum} &nbsp;·&nbsp; Level: ${player.level}</div>
+          <div style="color:#c9a84c;">+${player.gold} gold banked · Total: ${bankGold}g</div>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:12px;">
+          <button class="obtn" onclick="startGame()">⚔ TRY AGAIN</button>
+          <button class="obtn" style="background:linear-gradient(180deg,#1a0e2e,#0a0618);border-color:#a78bfa;color:#a78bfa;text-shadow:0 0 10px #a78bfa99;" onclick="openShop()">🛒 SHOP</button>
+        </div>
+        <div id="bank-display" style="margin-top:14px;font-size:0.44rem;color:#c9a84c;letter-spacing:2px;">💰 Bank: ${bankGold} gold</div>
+      </div>
+      <div id="shop-panel" style="display:none;width:100%;max-width:760px;padding:0 20px;">
+        <h2 style="font-size:1.8rem;margin-bottom:6px;">🛒 THE SHOP</h2>
+        <div id="shop-bank" style="font-size:0.44rem;color:#c9a84c;letter-spacing:2px;">💰 0 gold</div>
+        <div id="shop-grid" id="shop-grid"></div>
+        <button class="obtn" style="margin-top:20px;font-size:0.48rem;padding:10px 28px;" onclick="closeShop()">← BACK</button>
+      </div>
+    `;
+    ov.style.display='flex';
+  },700);
+}
+
+function winGame(){
+  dead=true;
+  bankGold+=player.gold;
+  setTimeout(()=>{
+    const ov=document.getElementById('ov');
+    ov.innerHTML=`
+      <div id="menu-panel" style="display:flex;flex-direction:column;align-items:center;">
+        <h2>👑 VICTORY!</h2>
+        <div class="sub">
+          <div>All 15 floors conquered!</div>
+          <div>Level: ${player.level} · ATK: ${player.atk} · Max HP: ${player.maxHp}</div>
+          <div style="color:#c9a84c;">+${player.gold} gold banked · Total: ${bankGold}g</div>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:12px;">
+          <button class="obtn" onclick="startGame()">⚔ PLAY AGAIN</button>
+          <button class="obtn" style="background:linear-gradient(180deg,#1a0e2e,#0a0618);border-color:#a78bfa;color:#a78bfa;text-shadow:0 0 10px #a78bfa99;" onclick="openShop()">🛒 SHOP</button>
+        </div>
+        <div id="bank-display" style="margin-top:14px;font-size:0.44rem;color:#c9a84c;letter-spacing:2px;">💰 Bank: ${bankGold} gold</div>
+      </div>
+      <div id="shop-panel" style="display:none;width:100%;max-width:760px;padding:0 20px;">
+        <h2 style="font-size:1.8rem;margin-bottom:6px;">🛒 THE SHOP</h2>
+        <div id="shop-bank" style="font-size:0.44rem;color:#c9a84c;letter-spacing:2px;">💰 0 gold</div>
+        <div id="shop-grid" id="shop-grid"></div>
+        <button class="obtn" style="margin-top:20px;font-size:0.48rem;padding:10px 28px;" onclick="closeShop()">← BACK</button>
+      </div>
+    `;
+    ov.style.display='flex';
+  },400);
+}
+
+// ══════════════════════════════════════════════════════════
+//  MAIN LOOP
+// ══════════════════════════════════════════════════════════
+let lastT=0,inputTimer=0;
+const MOVE_REPEAT=0.13; // seconds between moves when key held
+
+function animate(ts){
+  requestAnimationFrame(animate);
+  const dt=Math.min((ts-lastT)/1000,0.05); lastT=ts;
+  const now=ts/1000;
+
+  if(!dead && map){
+    // Input
+    inputTimer-=dt;
+    // Tick shot cooldown
+    if(player.shotCooldown>0){
+      player.shotCooldown=Math.max(0,player.shotCooldown-dt);
+    }
+    // Tick dash cooldown
+    if(player.dashCooldown>0){
+      player.dashCooldown=Math.max(0,player.dashCooldown-dt);
+    }
+    if(inputTimer<=0){
+      const dir=getInput();
+      if(dir&&!player.moving){
+        tryMove(dir[0],dir[1]);
+        inputTimer=MOVE_REPEAT;
+      }
+      if(!dir)inputTimer=0;
+    }
+
+    // Player movement interpolation
+    if(player.moving){
+      player.prog+=dt*(player._dashing?22:9);
+      if(player.prog>=1){
+        player.prog=1;
+        player.x=player.toX; player.y=player.toY;
+        player.moving=false;
+        if(player._dashing) player._dashing=false;
+        landOnTile();
+      }
+    }
+
+    // Update player mesh
+    if(playerGroup){
+      const t=player.prog;
+      const rx=player.fromX+(player.toX-player.fromX)*t;
+      const ry=player.fromY+(player.toY-player.fromY)*t;
+      const pp=tilePos(rx,ry);
+      player.bobT+=dt*3;
+      const bob=player.moving?Math.sin(player.bobT*8)*0.07:Math.sin(player.bobT)*0.04;
+      playerGroup.position.set(pp.x,bob,pp.z);
+      // (FP: player mesh hidden, no rotation needed)
+      // FP camera follows player exactly
+      cameraTarget.set(pp.x,0,pp.z);
+    }
+
+    // ── First-person camera update ──
+    if(playerGroup){
+      // Mouse-look yaw (consume accumulated delta)
+      player.fpYaw += mouseDX * MOUSE_SENS;
+      mouseDX = 0;
+      // Keyboard turning fallback (A/D / arrow keys)
+      const turn=getTurnInput();
+      if(turn!==0) player.fpYaw+=turn*3.2*dt;
+      // Update facing vector from yaw
+      player.facing.set(Math.sin(player.fpYaw),0,-Math.cos(player.fpYaw)).normalize();
+
+      // Snap position follow (feels snappier in FP)
+      camera.position.x+=(cameraTarget.x-camera.position.x)*0.55;
+      camera.position.z+=(cameraTarget.z-camera.position.z)*0.55;
+
+      // Eye height + walk bob
+      player.bobT+=dt*3;
+      const bobAmt=player.moving?Math.sin(player.bobT*8)*0.04:0;
+      camera.position.y=1.1+bobAmt;
+
+      // Point camera in facing direction with slight pitch capability
+      const lookX=camera.position.x+player.facing.x*10;
+      const lookZ=camera.position.z+player.facing.z*10;
+      camera.lookAt(lookX, 1.1+bobAmt, lookZ);
+    }
+
+    // Camera shake
+    if(shakeT>0){
+      camera.position.x+=(Math.random()-0.5)*shakeStrength*0.3;
+      camera.position.y+=(Math.random()-0.5)*shakeStrength*0.3;
+      shakeT--;
+    }
+
+    // Update monster meshes + ranged shot timers
+    ents.filter(e=>e.hp>0&&e.mesh).forEach(e=>{
+      e.bobT+=dt*2.2;
+      const bob=Math.sin(e.bobT)*0.05;
+      const ep=tilePos(e.x,e.y);
+      e.mesh.position.set(ep.x,bob,ep.z);
+      // face player
+      const pp2=tilePos(player.x,player.y);
+      const ang=Math.atan2(pp2.x-ep.x,pp2.z-ep.z);
+      e.mesh.rotation.y=ang;
+      // Ranged: pulse orb and tick shot cooldown
+      if(e.ranged){
+        const dx=player.x-e.x, dy=player.y-e.y;
+        const dist=Math.abs(dx)+Math.abs(dy);
+        if(dist>=2&&dist<=5){
+          // count down shot timer
+          e._shotTimer-=dt;
+          if(e._shotTimer<=0){
+            e._shotTimer=e.shotCooldown;
+            spawnProjectile(e);
+            // flash orb on shoot
+            if(e._orbMesh){
+              e._orbMesh.scale.setScalar(1.6);
+              setTimeout(()=>{if(e._orbMesh)e._orbMesh.scale.setScalar(1);},120);
+            }
+          }
+          // pulse orb while in range
+          if(e._orbMesh){
+            e._orbMesh.scale.setScalar(1+0.25*Math.sin(now*8+e.bobT));
+          }
+        }
+      }
+    });
+
+    // Update projectiles
+    updateProjectiles(dt,now);
+
+    // Torch flicker
+    torchFlames.forEach(tf=>{
+      tf.phase+=dt*6;
+      const flicker=Math.sin(tf.phase)*0.15+Math.sin(tf.phase*2.3)*0.08;
+      tf.flame.material.opacity=0.82+flicker*0.18;
+      tf.innerFlame.material.opacity=0.9+flicker*0.1;
+      tf.flame.scale.y=1+flicker*0.25;
+      tf.flame.position.y=1.2+flicker*0.06;
+      tf.light.intensity=tf.light.userData.baseIntensity+flicker*0.5;
+    });
+
+    // Stair glow pulse
+    sceneObjects.forEach(o=>{
+      if(o.userData&&o.userData.stairGlow){
+        o.material.opacity=0.4+0.4*Math.sin(now*2.5);
+        o.rotation.z+=dt*0.8;
+      }
+    });
+
+    // Chest/potion bob
+    sceneObjects.forEach(o=>{
+      if(o.userData&&(o.userData.type==='chest'||o.userData.type==='potion')){
+        o.position.y=0.11+Math.sin(now*2+o.userData.gx)*0.06;
+        o.rotation.y+=dt*0.6;
+      }
+    });
+  }
+
+  drawMinimap();
+  renderer.render(scene,camera);
+}
+
+
+// ══════════════════════════════════════════════════════════
+//  MINIMAP
+// ══════════════════════════════════════════════════════════
+const mmCanvas=document.getElementById('mmcanvas');
+const mmCtx=mmCanvas?mmCanvas.getContext('2d'):null;
+const MM=140, MM_COLS=18, MM_ROWS=18;
+const mmCell=Math.floor(MM/MM_COLS); // ~7px per cell
+
+function drawMinimap(){
+  if(!mmCtx||!map) return;
+  mmCtx.clearRect(0,0,MM,MM);
+  // Draw tiles
+  for(let gy=0;gy<MM_ROWS;gy++){
+    for(let gx=0;gx<MM_COLS;gx++){
+      const t=map[gy][gx];
+      if(t===0){mmCtx.fillStyle='#0a0614';}
+      else if(t===2){mmCtx.fillStyle='#c9a84c';} // stair
+      else if(t===3){mmCtx.fillStyle='#8b6914';} // chest
+      else if(t===4){mmCtx.fillStyle='#3498db';} // potion
+      else{mmCtx.fillStyle='#2a1e38';}
+      mmCtx.fillRect(gx*mmCell,gy*mmCell,mmCell,mmCell);
+    }
+  }
+  // Draw enemies
+  ents.filter(e=>e.hp>0).forEach(e=>{
+    mmCtx.fillStyle=e.ranged?'#ff88ff':'#ff4444';
+    mmCtx.fillRect(e.x*mmCell+1,e.y*mmCell+1,mmCell-2,mmCell-2);
+  });
+  // Draw player
+  const px=player.x, py=player.y;
+  mmCtx.fillStyle='#44aaff';
+  mmCtx.beginPath();
+  mmCtx.arc(px*mmCell+mmCell/2,py*mmCell+mmCell/2,mmCell*0.55,0,Math.PI*2);
+  mmCtx.fill();
+  // Draw facing arrow
+  mmCtx.strokeStyle='#ffffff';
+  mmCtx.lineWidth=1.5;
+  const cx=px*mmCell+mmCell/2, cy=py*mmCell+mmCell/2;
+  mmCtx.beginPath();
+  mmCtx.moveTo(cx,cy);
+  mmCtx.lineTo(cx+Math.sin(player.fpYaw)*mmCell*1.1,cy-Math.cos(player.fpYaw)*mmCell*1.1);
+  mmCtx.stroke();
+}
+
+// ── Boot ──
+scene.add(new THREE.AmbientLight(0x100818,1));
+requestAnimationFrame(animate);
+
+// ══════════════════════════════════════════════════════════
+//  PERSISTENT SHOP SYSTEM
+// ══════════════════════════════════════════════════════════
+
+// Bank gold persists across runs
+let bankGold = 0;
+
+// Upgrade definitions
+const UPGRADES = [
+  {
+    id:'hp', icon:'❤', name:'VITALITY',
+    desc: n => n===0 ? '+15 Max HP per rank' : `+${n*15} Max HP active (rank ${n})`,
+    baseCost:20, costScale:15, max:8,
+    apply: p => { p.maxHp += 15; p.hp = Math.min(p.hp + 15, p.maxHp); }
+  },
+  {
+    id:'atk', icon:'⚔', name:'SHARPNESS',
+    desc: n => n===0 ? '+2 ATK per rank' : `+${n*2} ATK active (rank ${n})`,
+    baseCost:25, costScale:20, max:6,
+    apply: p => { p.atk += 2; }
+  },
+  {
+    id:'mana', icon:'✨', name:'ARCANE FONT',
+    desc: n => n===0 ? '+3 starting mana per rank' : `+${n*3} starting mana active (rank ${n})`,
+    baseCost:30, costScale:25, max:6,
+    apply: p => { p.mana += 3; p.maxMana += 3; }
+  },
+  {
+    id:'manacd', icon:'⚡', name:'SWIFT CAST',
+    desc: n => {
+      const cd = Math.max(0.3, 1.0 - n*0.15).toFixed(2);
+      return n===0 ? '−0.15s shot cooldown per rank (min 0.3s)' : `Shot cooldown: ${cd}s (rank ${n})`;
+    },
+    baseCost:35, costScale:30, max:4,
+    apply: p => { p._shotCdBonus = (p._shotCdBonus||0) + 0.15; }
+  },
+  {
+    id:'chest', icon:'📦', name:'TREASURE SENSE',
+    desc: n => n===0 ? '+50% chest gold per rank' : `+${n*50}% chest gold active (rank ${n})`,
+    baseCost:40, costScale:35, max:5,
+    apply: () => {}
+  },
+  {
+    id:'armor', icon:'🛡', name:'IRON SKIN',
+    desc: n => n===0 ? '−1 damage taken per rank' : `−${n} damage taken active (rank ${n})`,
+    baseCost:50, costScale:40, max:4,
+    apply: p => { p._armor = (p._armor||0) + 1; }
+  },
+  {
+    id:'xpboost', icon:'⭐', name:'SCHOLAR',
+    desc: n => n===0 ? '+20% XP per rank' : `+${n*20}% XP active (rank ${n})`,
+    baseCost:45, costScale:35, max:5,
+    apply: () => {}
+  },
+  {
+    id:'potency', icon:'🧪', name:'ALCHEMIST',
+    desc: n => n===0 ? '+5 HP from potions per rank' : `+${n*5} HP from potions active (rank ${n})`,
+    baseCost:30, costScale:25, max:5,
+    apply: () => {}
+  },
+  {
+    id:'manarefill', icon:'🔮', name:'ARCANE SURGE',
+    desc: n => n===0 ? '+2 mana on floor entry per rank' : `+${n*2} mana on floor entry active (rank ${n})`,
+    baseCost:55, costScale:45, max:3,
+    apply: () => {}
+  },
+  {
+    id:'lifesteal', icon:'🩸', name:'BLOOD PACT',
+    desc: n => n===0 ? 'Heal 1% max HP on kill per rank' : `Heal ${n}% max HP on kill active (rank ${n})`,
+    baseCost:50, costScale:40, max:6,
+    apply: () => {}
+  },
+];
+
+// Track how many of each upgrade bought
+const upgradeBought = {};
+UPGRADES.forEach(u => upgradeBought[u.id] = 0);
+
+function upgradeCost(u){
+  const n = upgradeBought[u.id];
+  return u.baseCost + n * u.costScale;
+}
+
+function renderShop(){
+  document.getElementById('shop-bank').textContent = '💰 ' + bankGold + ' gold';
+  const grid = document.getElementById('shop-grid');
+  grid.innerHTML = '';
+  UPGRADES.forEach(u => {
+    const bought = upgradeBought[u.id];
+    const cost   = upgradeCost(u);
+    const maxed  = bought >= u.max;
+    const poor   = bankGold < cost;
+    const card   = document.createElement('div');
+    card.className = 'scard' + (maxed?' scard-maxed':poor?' scard-cantafford':'');
+    card.innerHTML = `
+      <div class="srank">${bought}/${u.max}</div>
+      <div class="sicon">${u.icon}</div>
+      <div class="sname">${u.name}</div>
+      ${maxed
+        ? '<div class="sprice" style="color:#4a2a2a;font-size:0.3rem;">MAX</div>'
+        : `<div class="sprice">💰${cost}g</div>`
+      }
+      <div class="sdesc">${u.desc(bought)}</div>
+      <div></div>
+    `;
+    if(!maxed && !poor){
+      card.onclick = () => buyUpgrade(u);
+    }
+    grid.appendChild(card);
+  });
+}
+
+function buyUpgrade(u){
+  const cost = upgradeCost(u);
+  if(bankGold < cost || upgradeBought[u.id] >= u.max) return;
+  bankGold -= cost;
+  upgradeBought[u.id]++;
+  renderShop();
+}
+
+function openShop(){
+  document.getElementById('menu-panel').style.display = 'none';
+  document.getElementById('shop-panel').style.display = 'block';
+  renderShop();
+}
+
+function closeShop(){
+  document.getElementById('shop-panel').style.display = 'none';
+  document.getElementById('menu-panel').style.display = 'flex';
+  document.getElementById('bank-display').textContent = '💰 Bank: ' + bankGold + ' gold';
+}
+
+function applyUpgradesToPlayer(p){
+  UPGRADES.forEach(u => {
+    const n = upgradeBought[u.id];
+    for(let i=0;i<n;i++) u.apply(p);
+  });
+  // Clamp shot cooldown bonus
+  if(p._shotCdBonus) p._shotCdBase = Math.max(0.3, 1.0 - p._shotCdBonus);
+  else p._shotCdBase = 1.0;
+}
+
+function showMainMenu(){
+  const ov = document.getElementById('ov');
+  ov.style.display = 'flex';
+  document.getElementById('menu-panel').style.display = 'flex';
+  document.getElementById('shop-panel').style.display = 'none';
+  document.getElementById('bank-display').textContent = '💰 Bank: ' + bankGold + ' gold';
+}
+
+</script>
+</body>
+</html>
